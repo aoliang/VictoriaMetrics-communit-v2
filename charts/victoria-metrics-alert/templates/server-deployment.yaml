@@ -53,7 +53,6 @@ spec:
             {{- toYaml .Values.server.podSecurityContext | nindent 12 }}
           image: "{{ .Values.server.image.repository }}:{{ default .Chart.AppVersion .Values.server.image.tag }}"
           args:
-            - -rule=/config/alert-rules.yaml
             - -datasource.url={{ .Values.server.datasource.url}}
             - -datasource.basicAuth.password={{ .Values.server.datasource.basicAuth.password}}
             - -datasource.basicAuth.username={{ .Values.server.datasource.basicAuth.username}}

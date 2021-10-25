@@ -53,25 +53,26 @@ server:
   # vmalert reads metrics from source, next section represents its configuration. It can be any service which supports
   # MetricsQL or PromQL.
   datasource:
-    url: ""
+    url: "http://victoria-metrics-single-server:8428"
     basicAuth:
       username: ""
       password: ""
 
   remote:
     write:
-      url: ""
+      url: "http://victoria-metrics-single-server:8428"
     read:
-      url: ""
+      url: "http://victoria-metrics-single-server:8428"
 
   notifier:
     alertmanager:
-      url: ""
+      url: "http://kube-prometheus-stack-alertmanager:9093"
 
   extraArgs:
     envflag.enable: "true"
     envflag.prefix: VM_
     loggerFormat: json
+    rule: /etc/prometheus/rules/prometheus-kube-prometheus-stack-prometheus-rulefiles-0/*.yaml
 
   # Additional hostPath mounts
   extraHostPathMounts:
@@ -84,21 +85,49 @@ server:
 
   # Extra Volumes for the pod
   extraVolumes:
-    []
-     #- name: example
-     #  configMap:
-     #    name: example
+    - name: prometheus-kube-prometheus-stack-prometheus-rulefiles-0
+      configMap:
+        defaultMode: 420
+        name: prometheus-kube-prometheus-stack-prometheus-rulefiles-0
 
   # Extra Volume Mounts for the container
   extraVolumeMounts:
-    []
-    # - name: example
-    #   mountPath: /example
+    - mountPath: /etc/prometheus/rules/prometheus-kube-prometheus-stack-prometheus-rulefiles-0
+      name: prometheus-kube-prometheus-stack-prometheus-rulefiles-0
 
   extraContainers:
-    []
-    #- name: config-reloader
-    #  image: reloader-image
+    - name: config-reloader
+      args:
+        - --listen-address=:8080
+        - --reload-url=http://127.0.0.1:8880/-/reload
+        - --log-level=debug
+        - --watched-dir=/etc/prometheus/rules/prometheus-kube-prometheus-stack-prometheus-rulefiles-0
+      command:
+        - /bin/prometheus-config-reloader
+      env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+      image: quay.io/prometheus-operator/prometheus-config-reloader:v0.47.0
+      imagePullPolicy: IfNotPresent
+      ports:
+        - containerPort: 8080
+          name: reloader-web
+          protocol: TCP
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: FallbackToLogsOnError
+      resources:
+        limits:
+          cpu: 100m
+          memory: 50Mi
+        requests:
+          cpu: 100m
+          memory: 50Mi
+      volumeMounts:
+        - mountPath: /etc/prometheus/rules/prometheus-kube-prometheus-stack-prometheus-rulefiles-0
+          name: prometheus-kube-prometheus-stack-prometheus-rulefiles-0
 
   service:
     annotations: {}
